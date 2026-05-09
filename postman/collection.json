@@ -1,0 +1,487 @@
+{
+	"info": {
+		"_postman_id": "b8e3f9a4-2c5d-4e7f-9b1a-0123456789ab",
+		"name": "Ulmj — DummyJSON",
+		"description": "F.CSM311 Бие даалт 14 — DummyJSON public API дээр integration тест. Auth, Products, Errors гэсэн 3 folder-т нийт 8 request, 25+ assertion.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"description": "Нэвтрэх ба хамгаалагдсан endpoint",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Username/password-аар нэвтэрч accessToken, userId-г environment-д хадгална."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Login: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Login: response time < 2000ms', () => {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Login: response has accessToken property', () => {",
+									"    pm.expect(data).to.have.property('accessToken');",
+									"});",
+									"",
+									"pm.test('Login: accessToken is a non-empty string', () => {",
+									"    pm.expect(data.accessToken).to.be.a('string');",
+									"    pm.expect(data.accessToken.length).to.be.above(20);",
+									"});",
+									"",
+									"pm.test('Login: email matches a basic email pattern', () => {",
+									"    pm.expect(data.email).to.match(/.+@.+\\..+/);",
+									"});",
+									"",
+									"// Chain: дараагийн request-уудад хувьсагч дамжуулна",
+									"pm.environment.set('accessToken', data.accessToken);",
+									"pm.environment.set('userId', data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get my info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Login-оос авсан {{accessToken}}-ыг ашиглан өөрийн profile-ыг авна (chained request)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Me: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Me: id matches userId saved at login', () => {",
+									"    pm.expect(data.id).to.eql(Number(pm.environment.get('userId')));",
+									"});",
+									"",
+									"pm.test('Me: id is a number', () => {",
+									"    pm.expect(data.id).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Me: email property exists and looks valid', () => {",
+									"    pm.expect(data).to.have.property('email');",
+									"    pm.expect(data.email).to.match(/.+@.+\\..+/);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"description": "Бүтээгдэхүүний CRUD",
+			"item": [
+				{
+					"name": "List products",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Эхний 10 бүтээгдэхүүний жагсаалт (Happy GET)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('List: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('List: Content-Type header is JSON', () => {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('List: response has products array', () => {",
+									"    pm.expect(data).to.have.property('products');",
+									"    pm.expect(data.products).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('List: products array has at least 1 item', () => {",
+									"    pm.expect(data.products.length).to.be.above(0);",
+									"});",
+									"",
+									"pm.test('List: total is a positive number', () => {",
+									"    pm.expect(data.total).to.be.a('number');",
+									"    pm.expect(data.total).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get product by id",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"1"
+							]
+						},
+						"description": "id = 1 бүтээгдэхүүнийг авна."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Get by id: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Get by id: response time < 2000ms', () => {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Get by id: id is exactly 1', () => {",
+									"    pm.expect(data.id).to.eql(1);",
+									"});",
+									"",
+									"pm.test('Get by id: price is a positive number', () => {",
+									"    pm.expect(data.price).to.be.a('number');",
+									"    pm.expect(data.price).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Add product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"{{randomTitle}}\",\n  \"price\": 19.99\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/add",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"add"
+							]
+						},
+						"description": "Pre-request script-ээр random title үүсгэж шинэ бүтээгдэхүүн нэмнэ. Шинэ id-г хадгална."
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Arrange: давтагдашгүй title үүсгэх (timestamp + санамсаргүй тоо)",
+									"const ts = Date.now();",
+									"const rnd = Math.floor(Math.random() * 1000);",
+									"const title = `Test Product ${ts}-${rnd}`;",
+									"pm.environment.set('randomTitle', title);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Add: status 201', () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Add: response has new id', () => {",
+									"    pm.expect(data).to.have.property('id');",
+									"    pm.expect(data.id).to.be.a('number');",
+									"    pm.expect(data.id).to.be.above(0);",
+									"});",
+									"",
+									"pm.test('Add: title matches the random title we sent', () => {",
+									"    pm.expect(data.title).to.eql(pm.environment.get('randomTitle'));",
+									"});",
+									"",
+									"// Chain: дараагийн request-уудад дамжуулж болохуйц шинэ id-г хадгална",
+									"pm.environment.set('createdProductId', data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated title\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"1"
+							]
+						},
+						"description": "Бүтээгдэхүүн id=1-ийн title-ыг шинэчлэнэ."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Update: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Update: title is updated to new value', () => {",
+									"    pm.expect(data.title).to.eql('Updated title');",
+									"});",
+									"",
+									"pm.test('Update: id is preserved', () => {",
+									"    pm.expect(data.id).to.eql(1);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"1"
+							]
+						},
+						"description": "Бүтээгдэхүүн id=1-ийг устгана."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Delete: status 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Delete: isDeleted flag is true', () => {",
+									"    pm.expect(data.isDeleted).to.eql(true);",
+									"});",
+									"",
+									"pm.test('Delete: deletedOn is a string (ISO date)', () => {",
+									"    pm.expect(data.deletedOn).to.be.a('string');",
+									"    pm.expect(data.deletedOn.length).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Errors",
+			"description": "Алдааны зам — negative test",
+			"item": [
+				{
+					"name": "Get non-existent product (404)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"999999"
+							]
+						},
+						"description": "Байхгүй id-аар хайх → API заавал 404 буцаах ёстой (contract)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Negative: status 404 for missing id', () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"var data = pm.response.json();",
+									"",
+									"pm.test('Negative: response includes a message field', () => {",
+									"    pm.expect(data).to.have.property('message');",
+									"});",
+									"",
+									"pm.test('Negative: message is a non-empty string', () => {",
+									"    pm.expect(data.message).to.be.a('string');",
+									"    pm.expect(data.message.length).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
