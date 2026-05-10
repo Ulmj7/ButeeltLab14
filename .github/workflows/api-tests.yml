@@ -1,0 +1,41 @@
+name: API tests
+
+on: [push, pull_request]
+
+jobs:
+  newman:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Substitute secrets into env.ci.json
+        env:
+          DUMMYJSON_PASSWORD: ${{ secrets.DUMMYJSON_PASSWORD }}
+        run: |
+          PASSWORD="${DUMMYJSON_PASSWORD:-emilyspass}"
+          sed -i "s|REPLACE_WITH_GITHUB_SECRET|$PASSWORD|g" postman/env.ci.json
+
+      - name: Run API tests
+        run: |
+          mkdir -p reports
+          newman run postman/collection.json \
+            -e postman/env.ci.json \
+            --reporters cli,junit,htmlextra \
+            --reporter-junit-export reports/api.xml \
+            --reporter-htmlextra-export reports/api.html
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-report
+          path: reports/
